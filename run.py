@@ -3,8 +3,15 @@ import argparse
 import mido
 from mido import Message, MidiFile, MidiTrack
 
+import random
 
-def create_midi_file(filename, repeats=10):
+
+def create_midi_file(
+    filename: str, repeats: int = 100, pattern_seed: int = 0, voice_seed: int = 0
+):
+    print(f"Pattern seed: {pattern_seed}")
+    print(f"Voice seed: {voice_seed}")
+
     # Define a dictionary to map instruments to MIDI notes
     note_values = {
         "B": 36,  # Conga Bass
@@ -25,6 +32,12 @@ def create_midi_file(filename, repeats=10):
         # Add more instruments as needed...
     }
 
+    random.seed(voice_seed)
+    # Shuffle the voices
+    note_keys = list(note_values.keys())
+    random.shuffle(note_keys)
+    note_values = {k: note_values[k] for k in note_keys}
+
     # Define the drum pattern
     drum_pattern = """
     B---O---O-S---O---O-S---
@@ -38,6 +51,22 @@ def create_midi_file(filename, repeats=10):
     ----T---------------T-------
     --------t---------------t---
     """
+
+    # Modify drum_pattern based on pattern_seed
+    random.seed(pattern_seed)
+
+    drum_pattern = drum_pattern.strip().split("\n")
+    for i in range(len(drum_pattern)):
+        line = drum_pattern[i]
+        new_line = ""
+        for char in line:
+            if char in note_values:
+                # If we land on a note, decide whether to change it
+                if random.random() < 0.9:  # 0.1 = 10% chance to change a note
+                    char = random.choice(note_keys)
+            new_line += char
+        drum_pattern[i] = new_line
+    drum_pattern = "\n".join(drum_pattern)
 
     # Create a new MIDI file
     mid = MidiFile()
@@ -80,13 +109,24 @@ def main():
     parser.add_argument(
         "--repeats", type=int, default=10, help="Number of times to repeat the pattern"
     )
+    parser.add_argument(
+        "--pattern_seed",
+        type=int,
+        default=0,
+        help="Seed for generating the drum pattern",
+    )
+    parser.add_argument(
+        "--voice_seed", type=int, default=0, help="Seed for generating the voices"
+    )
     parser.add_argument("filename", help="The name of the file to play or create")
     args = parser.parse_args()
 
     if args.play:
         play_midi_file(args.filename)
     else:
-        create_midi_file(args.filename, args.repeats)
+        create_midi_file(
+            args.filename, args.repeats, args.pattern_seed, args.voice_seed
+        )
 
 
 if __name__ == "__main__":
